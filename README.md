@@ -1,6 +1,6 @@
 # dotnet-mcp-library
 
-> A practical example of a **Model Context Protocol (MCP) Server** built with **.NET 9**, following **Clean Architecture**, **CQRS** and **MediatR** — exposing a library management domain as AI-accessible tools for Claude.
+A practical example of a **Model Context Protocol (MCP) Server** built with **.NET 9**, following **Clean Architecture**, **CQRS** and **MediatR** — exposing a library management domain as AI-accessible tools for Claude.
 
 [![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
 [![MCP](https://img.shields.io/badge/MCP-Model_Context_Protocol-CC785C?style=flat-square&logo=anthropic)](https://modelcontextprotocol.io)
@@ -10,59 +10,57 @@
 
 ---
 
-## 🎯 What This Project Demonstrates
+## What This Project Demonstrates
 
 This project shows how to expose a real .NET domain as an **MCP Server** — enabling Claude (or any MCP-compatible AI client) to interact with your application through structured, type-safe tool calls.
 
 The domain is a **library system** (books, users, rentals), but the architecture and patterns apply to any enterprise domain.
 
-**Key concepts:**
-- Building an **MCP Server in .NET** from scratch (without Python or Node.js)
-- **Clean Architecture** with strict layer separation and dependency inversion
-- **CQRS + MediatR** for write/read separation inside the application layer
-- **EF Core + SQLite** for zero-config persistence
-- Full **OpenAPI** documentation alongside MCP tools
+Key concepts:
+- Building an MCP Server in .NET from scratch, without Python or Node.js
+- Clean Architecture with strict layer separation and dependency inversion
+- CQRS + MediatR for write/read separation inside the application layer
+- EF Core + SQLite for zero-config persistence
+- Full OpenAPI documentation alongside MCP tools
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 dotnet-mcp-library/
 └── src/
-    ├── LibraryMCP.Domain/          # Entities, business rules (no dependencies)
-    ├── LibraryMCP.Application/     # CQRS: Commands, Queries, Handlers (MediatR)
+    ├── LibraryMCP.Domain/          # Entities and business rules — no external dependencies
+    ├── LibraryMCP.Application/     # CQRS: Commands, Queries and Handlers via MediatR
     ├── LibraryMCP.Infrastructure/  # EF Core, SQLite, DbContext
-    ├── LibraryMCP.MCP/             # MCP Server: tool definitions + execution
-    └── LibraryMCP.API/             # ASP.NET Core host, DI wiring, endpoints
+    ├── LibraryMCP.MCP/             # MCP Server: tool definitions and execution
+    └── LibraryMCP.API/             # ASP.NET Core host, DI wiring, HTTP endpoints
 ```
 
-**Dependency rule:** `API → MCP → Application → Domain ← Infrastructure`
-
-### Layer Responsibilities
+Dependency rule: `API -> MCP -> Application -> Domain <- Infrastructure`
 
 | Layer | Responsibility |
 |-------|---------------|
-| **Domain** | Entities (`Book`, `User`, `Rental`) with business invariants |
-| **Application** | Commands (write) and Queries (read) via MediatR handlers |
-| **Infrastructure** | EF Core persistence, migrations, DbContext |
-| **MCP** | Tool schema definitions + dispatches calls to Application via Mediator |
-| **API** | ASP.NET Core host, DI configuration, HTTP endpoints |
+| Domain | Entities (Book, User, Rental) with business invariants |
+| Application | Commands (write) and Queries (read) dispatched via MediatR |
+| Infrastructure | EF Core persistence, migrations, DbContext implementation |
+| MCP | Tool schema definitions, dispatches calls to Application layer |
+| API | ASP.NET Core host, DI configuration, HTTP endpoint mapping |
 
 ---
 
-## 🤖 MCP Tools Exposed
+## MCP Tools
 
-The MCP server exposes 4 tools that Claude can call directly:
+The server exposes 4 tools that Claude can invoke directly:
 
 | Tool | Description |
 |------|-------------|
-| `listar_livros_disponiveis` | Lists all books available for rental |
+| `listar_livros_disponiveis` | Lists all books currently available for rental |
 | `cadastrar_livro` | Registers a new book in the catalog |
 | `cadastrar_usuario` | Registers a new library user |
-| `locar_livro` | Creates a rental for a user |
+| `locar_livro` | Creates a rental record for a user |
 
-### Tool Schema Example
+Tool schema example:
 
 ```json
 {
@@ -81,13 +79,9 @@ The MCP server exposes 4 tools that Claude can call directly:
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### Prerequisites
-
-- [.NET 9 SDK](https://dotnet.microsoft.com/download)
-
-### Run locally
+**Prerequisites:** [.NET 9 SDK](https://dotnet.microsoft.com/download)
 
 ```bash
 git clone https://github.com/alexandrecampos-dev/dotnet-mcp-library.git
@@ -100,31 +94,20 @@ cd src/LibraryMCP.API
 dotnet run
 ```
 
-API available at `http://localhost:5000`
-
-OpenAPI docs at `http://localhost:5000/openapi/v1.json`
+API: `http://localhost:5000`  
+OpenAPI: `http://localhost:5000/openapi/v1.json`
 
 ---
 
-## 📡 HTTP Endpoints
+## HTTP Endpoints
 
-### List available MCP tools
+**List available tools**
 
 ```http
 GET /mcp/tools
 ```
 
-```json
-[
-  {
-    "name": "listar_livros_disponiveis",
-    "description": "Lists all books available for rental",
-    "parameters": {}
-  }
-]
-```
-
-### Execute a tool
+**Execute a tool**
 
 ```http
 POST /mcp/execute
@@ -143,6 +126,8 @@ Content-Type: application/json
 }
 ```
 
+Response:
+
 ```json
 {
   "success": true,
@@ -155,12 +140,12 @@ Content-Type: application/json
 
 ---
 
-## 🔗 Claude Desktop Integration
+## Claude Desktop Integration
 
-To use this MCP server directly from Claude Desktop, add to your config file:
+Add to your Claude Desktop config file:
 
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`  
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -176,51 +161,47 @@ To use this MCP server directly from Claude Desktop, add to your config file:
 }
 ```
 
-After restarting Claude Desktop, you'll see the library tools available in Claude's tool panel.
+Restart Claude Desktop — the library tools will appear in the tool panel.
 
 ---
 
-## 🧱 Business Rules
+## Business Rules
 
-- A book can only be rented if `QuantidadeDisponivel > 0`
+- A book can only be rented when `QuantidadeDisponivel > 0`
 - Each rental decrements `QuantidadeDisponivel` automatically
-- Default loan period: **14 days** (configurable per rental)
-- Each rental tracks `DataLocacao`, `DataPrevistaDevolucao` and `DataDevolucao`
+- Default loan period: 14 days (configurable per rental)
+- Rental records track `DataLocacao`, `DataPrevistaDevolucao` and `DataDevolucao`
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Technology | Purpose |
 |-----------|---------|
-| **.NET 9** | Runtime and framework |
-| **ASP.NET Core** | HTTP host and routing |
-| **MediatR** | CQRS mediator pipeline |
-| **Entity Framework Core** | ORM and migrations |
-| **SQLite** | Zero-config local database |
-| **FluentValidation** | Command validation |
-| **OpenAPI** | API documentation |
+| .NET 9 | Runtime |
+| ASP.NET Core | HTTP host and routing |
+| MediatR | CQRS mediator pipeline |
+| Entity Framework Core | ORM and migrations |
+| SQLite | Zero-config local database |
+| FluentValidation | Command input validation |
+| OpenAPI | API documentation |
 
 ---
 
-## 📚 Learn More
+## References
 
-- [Model Context Protocol — Official Docs](https://modelcontextprotocol.io)
+- [Model Context Protocol — Specification](https://modelcontextprotocol.io)
 - [Clean Architecture — Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-Clean-Architecture.html)
-- [CQRS Pattern](https://martinfowler.com/bliki/CQRS.html)
-- [MediatR — GitHub](https://github.com/jbogard/MediatR)
+- [CQRS — Martin Fowler](https://martinfowler.com/bliki/CQRS.html)
+- [MediatR](https://github.com/jbogard/MediatR)
 
 ---
 
-## 👤 Author
+## Author
 
-**Alexandre Campos**  
-Software Engineer & AI Engineer  
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-alexandrecampos-0077B5?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/alexandre-campos-3725b18b/)
-[![GitHub](https://img.shields.io/badge/GitHub-alexandrecampos--dev-181717?style=flat-square&logo=github)](https://github.com/alexandrecampos-dev)
+**Alexandre Campos** — Software Engineer & AI Engineer  
+[LinkedIn](https://www.linkedin.com/in/alexandre-campos-3725b18b/) · [GitHub](https://github.com/alexandrecampos-dev)
 
 ---
 
-## 📄 License
-
-MIT License — feel free to use this as a reference for your own MCP integrations.
+MIT License
