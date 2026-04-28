@@ -1,71 +1,61 @@
 # dotnet-mcp-library
 
-A practical example of a **Model Context Protocol (MCP) Server** built with **.NET 9**, following **Clean Architecture**, **CQRS** and **MediatR** — exposing a library management domain as AI-accessible tools for Claude.
+Exemplo prático de um **Servidor MCP (Model Context Protocol)** construído com **.NET 9** — expõe um domínio de negócio real como ferramentas tipadas para o Claude interagir diretamente.
 
 [![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
 [![MCP](https://img.shields.io/badge/MCP-Model_Context_Protocol-CC785C?style=flat-square&logo=anthropic)](https://modelcontextprotocol.io)
-[![Architecture](https://img.shields.io/badge/Architecture-Clean_Architecture-00C7B7?style=flat-square)]()
-[![Pattern](https://img.shields.io/badge/Pattern-CQRS_+_MediatR-764BA2?style=flat-square)]()
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Arquitetura](https://img.shields.io/badge/Arquitetura-Clean_Architecture-00C7B7?style=flat-square)]()
+[![Padrão](https://img.shields.io/badge/Padrão-CQRS_+_MediatR-764BA2?style=flat-square)]()
+[![Licença](https://img.shields.io/badge/Licença-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
-## What This Project Demonstrates
+## O que este projeto demonstra
 
-This project shows how to expose a real .NET domain as an **MCP Server** — enabling Claude (or any MCP-compatible AI client) to interact with your application through structured, type-safe tool calls.
+A maioria dos servidores MCP é implementada em Python ou Node.js. Este projeto mostra como construir um servidor MCP em **.NET puro**, integrando o Claude a um sistema de biblioteca com chamadas de ferramenta tipadas e seguras.
 
-The domain is a **library system** (books, users, rentals), but the architecture and patterns apply to any enterprise domain.
-
-Key concepts:
-- Building an MCP Server in .NET from scratch, without Python or Node.js
-- Clean Architecture with strict layer separation and dependency inversion
-- CQRS + MediatR for write/read separation inside the application layer
-- EF Core + SQLite for zero-config persistence
-- Full OpenAPI documentation alongside MCP tools
+| Característica | Detalhe |
+|---------------|---------|
+| Domínio | Sistema de biblioteca — livros, usuários, locações |
+| Ferramentas MCP | 4 ferramentas expostas com schemas bem definidos |
+| Arquitetura | Clean Architecture com separação estrita de camadas |
+| Padrão | CQRS + MediatR para separação leitura/escrita |
+| Persistência | EF Core + SQLite — zero configuração extra |
+| Documentação | OpenAPI gerado automaticamente junto às ferramentas MCP |
 
 ---
 
-## Architecture
+## Arquitetura
 
 ```
 dotnet-mcp-library/
 └── src/
-    ├── LibraryMCP.Domain/          # Entities and business rules — no external dependencies
-    ├── LibraryMCP.Application/     # CQRS: Commands, Queries and Handlers via MediatR
+    ├── LibraryMCP.Domain/          # Entidades e regras de negócio — sem dependências externas
+    ├── LibraryMCP.Application/     # CQRS: Commands, Queries e Handlers via MediatR
     ├── LibraryMCP.Infrastructure/  # EF Core, SQLite, DbContext
-    ├── LibraryMCP.MCP/             # MCP Server: tool definitions and execution
-    └── LibraryMCP.API/             # ASP.NET Core host, DI wiring, HTTP endpoints
+    ├── LibraryMCP.MCP/             # Servidor MCP: definição e execução das ferramentas
+    └── LibraryMCP.API/             # Host ASP.NET Core, configuração de DI, endpoints HTTP
 ```
 
-Dependency rule: `API -> MCP -> Application -> Domain <- Infrastructure`
-
-| Layer | Responsibility |
-|-------|---------------|
-| Domain | Entities (Book, User, Rental) with business invariants |
-| Application | Commands (write) and Queries (read) dispatched via MediatR |
-| Infrastructure | EF Core persistence, migrations, DbContext implementation |
-| MCP | Tool schema definitions, dispatches calls to Application layer |
-| API | ASP.NET Core host, DI configuration, HTTP endpoint mapping |
+Regra de dependência: `API -> MCP -> Application -> Domain <- Infrastructure`
 
 ---
 
-## MCP Tools
+## Ferramentas MCP disponíveis
 
-The server exposes 4 tools that Claude can invoke directly:
+| Ferramenta | Descrição |
+|-----------|----------|
+| `listar_livros_disponiveis` | Lista todos os livros disponíveis para locação |
+| `cadastrar_livro` | Registra um novo livro no acervo |
+| `cadastrar_usuario` | Registra um novo usuário na biblioteca |
+| `locar_livro` | Cria uma locação para um usuário |
 
-| Tool | Description |
-|------|-------------|
-| `listar_livros_disponiveis` | Lists all books currently available for rental |
-| `cadastrar_livro` | Registers a new book in the catalog |
-| `cadastrar_usuario` | Registers a new library user |
-| `locar_livro` | Creates a rental record for a user |
-
-Tool schema example:
+Schema de exemplo:
 
 ```json
 {
   "name": "cadastrar_livro",
-  "description": "Registers a new book in the library catalog",
+  "description": "Registra um novo livro no acervo da biblioteca",
   "parameters": {
     "titulo":        { "type": "string",  "required": true },
     "autor":         { "type": "string",  "required": true },
@@ -79,35 +69,36 @@ Tool schema example:
 
 ---
 
-## Getting Started
+## Início rápido
 
-**Prerequisites:** [.NET 9 SDK](https://dotnet.microsoft.com/download)
+**Pré-requisito:** [.NET 9 SDK](https://dotnet.microsoft.com/download)
 
 ```bash
+# 1. Clone o repositório
 git clone https://github.com/alexandrecampos-dev/dotnet-mcp-library.git
 cd dotnet-mcp-library
 
-dotnet restore
-dotnet build
+# 2. Restaure e compile
+dotnet restore && dotnet build
 
-cd src/LibraryMCP.API
-dotnet run
+# 3. Execute
+cd src/LibraryMCP.API && dotnet run
 ```
 
-API: `http://localhost:5000`  
-OpenAPI: `http://localhost:5000/openapi/v1.json`
+API disponível em `http://localhost:5000`  
+OpenAPI em `http://localhost:5000/openapi/v1.json`
 
 ---
 
-## HTTP Endpoints
+## Referência da API HTTP
 
-**List available tools**
+### Listar ferramentas disponíveis
 
 ```http
 GET /mcp/tools
 ```
 
-**Execute a tool**
+### Executar uma ferramenta
 
 ```http
 POST /mcp/execute
@@ -126,7 +117,7 @@ Content-Type: application/json
 }
 ```
 
-Response:
+Resposta:
 
 ```json
 {
@@ -140,9 +131,9 @@ Response:
 
 ---
 
-## Claude Desktop Integration
+## Integração com Claude Desktop
 
-Add to your Claude Desktop config file:
+Adicione ao arquivo de configuração do Claude Desktop:
 
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -152,7 +143,7 @@ Add to your Claude Desktop config file:
   "mcpServers": {
     "biblioteca": {
       "command": "dotnet",
-      "args": ["run", "--project", "C:/path/to/dotnet-mcp-library/src/LibraryMCP.API"],
+      "args": ["run", "--project", "C:/caminho/para/dotnet-mcp-library/src/LibraryMCP.API"],
       "env": {
         "ASPNETCORE_URLS": "http://localhost:5000"
       }
@@ -161,43 +152,33 @@ Add to your Claude Desktop config file:
 }
 ```
 
-Restart Claude Desktop — the library tools will appear in the tool panel.
+Após reiniciar o Claude Desktop, as ferramentas da biblioteca aparecerão no painel de ferramentas.
 
 ---
 
-## Business Rules
+## Regras de negócio
 
-- A book can only be rented when `QuantidadeDisponivel > 0`
-- Each rental decrements `QuantidadeDisponivel` automatically
-- Default loan period: 14 days (configurable per rental)
-- Rental records track `DataLocacao`, `DataPrevistaDevolucao` and `DataDevolucao`
+- Um livro só pode ser locado quando `QuantidadeDisponivel > 0`
+- Cada locação decrementa `QuantidadeDisponivel` automaticamente
+- Prazo padrão de empréstimo: 14 dias (configurável por locação)
 
 ---
 
-## Tech Stack
+## Stack
 
-| Technology | Purpose |
-|-----------|---------|
+| Tecnologia | Finalidade |
+|-----------|-----------|
 | .NET 9 | Runtime |
-| ASP.NET Core | HTTP host and routing |
-| MediatR | CQRS mediator pipeline |
-| Entity Framework Core | ORM and migrations |
-| SQLite | Zero-config local database |
-| FluentValidation | Command input validation |
-| OpenAPI | API documentation |
+| ASP.NET Core | Host HTTP e roteamento |
+| MediatR | Pipeline CQRS |
+| Entity Framework Core | ORM e migrations |
+| SQLite | Banco de dados local sem configuração extra |
+| FluentValidation | Validação de entrada |
+| OpenAPI | Documentação da API |
 
 ---
 
-## References
-
-- [Model Context Protocol — Specification](https://modelcontextprotocol.io)
-- [Clean Architecture — Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-Clean-Architecture.html)
-- [CQRS — Martin Fowler](https://martinfowler.com/bliki/CQRS.html)
-- [MediatR](https://github.com/jbogard/MediatR)
-
----
-
-## Author
+## Autor
 
 **Alexandre Campos** — Software Engineer & AI Engineer  
 [LinkedIn](https://www.linkedin.com/in/alexandre-campos-3725b18b/) · [GitHub](https://github.com/alexandrecampos-dev)
