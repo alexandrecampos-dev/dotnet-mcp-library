@@ -1,188 +1,134 @@
 # dotnet-mcp-library
 
-Exemplo prático de um **Servidor MCP (Model Context Protocol)** construído com **.NET 9** — expõe um domínio de negócio real como ferramentas tipadas para o Claude interagir diretamente.
+Servidor **MCP (Model Context Protocol)** em **.NET 10** com o SDK oficial, expondo um sistema de biblioteca como ferramentas para o Claude e qualquer outro cliente MCP. Roda por **stdio** (Claude Code, Claude Desktop) e por **HTTP** com autenticação JWT.
 
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
-[![MCP](https://img.shields.io/badge/MCP-Model_Context_Protocol-CC785C?style=flat-square&logo=anthropic)](https://modelcontextprotocol.io)
-[![Arquitetura](https://img.shields.io/badge/Arquitetura-Clean_Architecture-00C7B7?style=flat-square)]()
-[![Padrão](https://img.shields.io/badge/Padrão-CQRS_+_MediatR-764BA2?style=flat-square)]()
+[![CI](https://github.com/alexandrecampos-dev/dotnet-mcp-library/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandrecampos-dev/dotnet-mcp-library/actions/workflows/ci.yml)
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com)
+[![MCP SDK](https://img.shields.io/badge/ModelContextProtocol-2.4-CC785C?style=flat-square)](https://github.com/modelcontextprotocol/csharp-sdk)
 [![Licença](https://img.shields.io/badge/Licença-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
 ## O que este projeto demonstra
 
-A maioria dos servidores MCP é implementada em Python ou Node.js. Este projeto mostra como construir um servidor MCP em **.NET puro**, integrando o Claude a um sistema de biblioteca com chamadas de ferramenta tipadas e seguras.
+Conectar um agente aos seus sistemas deixou de ser o problema: o protocolo já é suportado pelos principais clientes. O que separa um servidor MCP bom de um que só gasta token é o **desenho do que o agente enxerga**. Este repositório é um exemplo pequeno e completo desse desenho.
 
-| Característica | Detalhe |
-|---------------|---------|
-| Domínio | Sistema de biblioteca — livros, usuários, locações |
-| Ferramentas MCP | 4 ferramentas expostas com schemas bem definidos |
-| Arquitetura | Clean Architecture com separação estrita de camadas |
-| Padrão | CQRS + MediatR para separação leitura/escrita |
-| Persistência | EF Core + SQLite — zero configuração extra |
-| Documentação | OpenAPI gerado automaticamente junto às ferramentas MCP |
+| Decisão | Como está aqui | Onde no código |
+|---|---|---|
+| **Ferramenta por intenção, não por endpoint** | 5 ferramentas que correspondem ao que o usuário quer fazer. `emprestar_livro` recebe "arquitetura limpa" ou um ISBN e o servidor resolve qual é o livro, em vez de o modelo encadear buscas e adivinhar IDs. | [`BibliotecaTools.cs`](src/LibraryMcp.Tools/Ferramentas/BibliotecaTools.cs) |
+| **A descrição é prompt** | Cada descrição diz quando usar, quando **não** usar e o que esperar de volta; cada parâmetro tem exemplo. Quando a referência é ambígua, a resposta lista as opções e manda perguntar ao usuário, nunca escolher por ele. | [`BibliotecaTools.cs`](src/LibraryMcp.Tools/Ferramentas/BibliotecaTools.cs) |
+| **Autorização no servidor** | Nenhuma ferramenta aceita ID de usuário vindo do modelo. O leitor vem do transporte (variável de ambiente no stdio, JWT no HTTP) e o papel (leitor ou bibliotecário) vem do cadastro, não do token. | [`Identidade.cs`](src/LibraryMcp.Tools/Identidade/Identidade.cs), [`LibraryMcp.Http/Program.cs`](src/LibraryMcp.Http/Program.cs) |
+| **Resposta enxuta** | Saída estruturada com só o que a próxima decisão precisa: sem Id interno, sem entidade inteira, sem dado de outro leitor. A busca tem teto de itens e avisa quando há mais resultados. | [`Respostas.cs`](src/LibraryMcp.Tools/Ferramentas/Respostas.cs) |
+| **Erro seguro** | Regra de negócio volta como erro de ferramenta com mensagem útil ("você já tem 3 empréstimos ativos, devolva um antes"). Qualquer outra exceção vira mensagem genérica: SQL e stack trace não saem do servidor. | `Executar` em [`BibliotecaTools.cs`](src/LibraryMcp.Tools/Ferramentas/BibliotecaTools.cs) |
+| **Trilha de auditoria** | Toda chamada registra ferramenta, leitor, resultado e duração, inclusive as recusadas. | [`BibliotecaMcpExtensions.cs`](src/LibraryMcp.Tools/BibliotecaMcpExtensions.cs) |
 
----
-
-## Arquitetura
-
-```
-dotnet-mcp-library/
-└── src/
-    ├── LibraryMCP.Domain/          # Entidades e regras de negócio — sem dependências externas
-    ├── LibraryMCP.Application/     # CQRS: Commands, Queries e Handlers via MediatR
-    ├── LibraryMCP.Infrastructure/  # EF Core, SQLite, DbContext
-    ├── LibraryMCP.MCP/             # Servidor MCP: definição e execução das ferramentas
-    └── LibraryMCP.API/             # Host ASP.NET Core, configuração de DI, endpoints HTTP
-```
-
-Regra de dependência: `API -> MCP -> Application -> Domain <- Infrastructure`
+As consultas são anotadas como somente leitura (`readOnlyHint`), o que permite ao cliente executá-las sem pedir confirmação e reservar a confirmação para o que muda dados.
 
 ---
 
-## Ferramentas MCP disponíveis
+## Ferramentas
 
-| Ferramenta | Descrição |
-|-----------|----------|
-| `listar_livros_disponiveis` | Lista todos os livros disponíveis para locação |
-| `cadastrar_livro` | Registra um novo livro no acervo |
-| `cadastrar_usuario` | Registra um novo usuário na biblioteca |
-| `locar_livro` | Cria uma locação para um usuário |
+| Ferramenta | Quem pode | O que faz |
+|---|---|---|
+| `buscar_livros` | qualquer leitor | Busca por título, autor ou ISBN, ignorando acento e maiúscula. Só leitura. |
+| `consultar_meus_emprestimos` | qualquer leitor | Empréstimos ativos de quem está conectado, com vencimento e atraso. Só leitura. |
+| `emprestar_livro` | qualquer leitor | Empresta por 14 dias. Regras: até 3 ativos, nenhum em atraso, exemplar disponível. |
+| `devolver_livro` | qualquer leitor | Registra a devolução e informa se houve atraso. |
+| `cadastrar_exemplares` | bibliotecário | Soma exemplares a um ISBN existente ou cadastra um livro novo. |
 
-Schema de exemplo:
-
-```json
-{
-  "name": "cadastrar_livro",
-  "description": "Registra um novo livro no acervo da biblioteca",
-  "parameters": {
-    "titulo":        { "type": "string",  "required": true },
-    "autor":         { "type": "string",  "required": true },
-    "isbn":          { "type": "string",  "required": true },
-    "editora":       { "type": "string",  "required": true },
-    "anoPublicacao": { "type": "number",  "required": true },
-    "quantidade":    { "type": "number",  "required": true }
-  }
-}
-```
+O banco SQLite é criado na primeira execução com um acervo de exemplo e três logins: **`ana`** e **`bruno`** (leitores) e **`carla`** (bibliotecária).
 
 ---
 
-## Início rápido
+## Como usar
 
-**Pré-requisito:** [.NET 9 SDK](https://dotnet.microsoft.com/download)
+Pré-requisito: [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```bash
-# 1. Clone o repositório
 git clone https://github.com/alexandrecampos-dev/dotnet-mcp-library.git
 cd dotnet-mcp-library
-
-# 2. Restaure e compile
-dotnet restore && dotnet build
-
-# 3. Execute
-cd src/LibraryMCP.API && dotnet run
+dotnet build
 ```
 
-API disponível em `http://localhost:5000`  
-OpenAPI em `http://localhost:5000/openapi/v1.json`
+### Claude Code (stdio)
 
----
-
-## Referência da API HTTP
-
-### Listar ferramentas disponíveis
-
-```http
-GET /mcp/tools
+```bash
+claude mcp add biblioteca --env BIBLIOTECA_USUARIO=ana -- dotnet run --project /caminho/para/dotnet-mcp-library/src/LibraryMcp.Stdio
 ```
 
-### Executar uma ferramenta
+Depois, numa conversa: *"tem algum livro da Chip Huyen disponível? se tiver, pega pra mim"*.
 
-```http
-POST /mcp/execute
-Content-Type: application/json
+### Claude Desktop (stdio)
 
-{
-  "method": "cadastrar_livro",
-  "params": {
-    "titulo": "Clean Code",
-    "autor": "Robert C. Martin",
-    "isbn": "978-0132350884",
-    "editora": "Prentice Hall",
-    "anoPublicacao": 2008,
-    "quantidade": 5
-  }
-}
-```
-
-Resposta:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "message": "Livro cadastrado com sucesso"
-  }
-}
-```
-
----
-
-## Integração com Claude Desktop
-
-Adicione ao arquivo de configuração do Claude Desktop:
-
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+No `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "biblioteca": {
       "command": "dotnet",
-      "args": ["run", "--project", "C:/caminho/para/dotnet-mcp-library/src/LibraryMCP.API"],
-      "env": {
-        "ASPNETCORE_URLS": "http://localhost:5000"
-      }
+      "args": ["run", "--project", "/caminho/para/dotnet-mcp-library/src/LibraryMcp.Stdio"],
+      "env": { "BIBLIOTECA_USUARIO": "ana" }
     }
   }
 }
 ```
 
-Após reiniciar o Claude Desktop, as ferramentas da biblioteca aparecerão no painel de ferramentas.
+### MCP Inspector
+
+```bash
+npx @modelcontextprotocol/inspector -e BIBLIOTECA_USUARIO=carla dotnet run --project src/LibraryMcp.Stdio
+```
+
+### Servidor remoto (Streamable HTTP + JWT)
+
+```bash
+dotnet run --project src/LibraryMcp.Http                 # sobe em http://localhost:5100/mcp
+dotnet run --project src/LibraryMcp.Http -- token ana    # imprime um token de desenvolvimento
+claude mcp add --transport http biblioteca-http http://localhost:5100/mcp --header "Authorization: Bearer <token>"
+```
+
+Sem token, ou com token de login não cadastrado, a resposta é `401`. O gerador de token só existe em `Development`.
 
 ---
 
-## Regras de negócio
+## Testes
 
-- Um livro só pode ser locado quando `QuantidadeDisponivel > 0`
-- Cada locação decrementa `QuantidadeDisponivel` automaticamente
-- Prazo padrão de empréstimo: 14 dias (configurável por locação)
+```bash
+dotnet test
+```
 
----
+São 20 testes, e nenhum deles chama a classe de ferramentas diretamente:
 
-## Stack
-
-| Tecnologia | Finalidade |
-|-----------|-----------|
-| .NET 9 | Runtime |
-| ASP.NET Core | Host HTTP e roteamento |
-| MediatR | Pipeline CQRS |
-| Entity Framework Core | ORM e migrations |
-| SQLite | Banco de dados local sem configuração extra |
-| FluentValidation | Validação de entrada |
-| OpenAPI | Documentação da API |
+- **Protocolo:** um cliente MCP real conversa com o servidor por pipes em memória e confere a lista de ferramentas, os esquemas (nenhum parâmetro de identidade), as anotações e o formato das respostas.
+- **Regras e autorização:** empréstimo por título, referência ambígua, limite de 3, bloqueio por atraso (com relógio controlado), recusa ao leitor que tenta cadastrar.
+- **HTTP:** o servidor ASP.NET Core em memória, com JWT válido, forjado, de login inexistente e ausente.
 
 ---
 
-## Autor
+## Estrutura
 
-**Alexandre Campos** — Software Engineer & AI Engineer  
-[LinkedIn](https://www.linkedin.com/in/alexandre-campos-3725b18b/) · [GitHub](https://github.com/alexandrecampos-dev)
+```
+src/
+  LibraryMcp.Core/    domínio (Livro, Leitor, Emprestimo), regras e EF Core + SQLite
+  LibraryMcp.Tools/   ferramentas MCP, identidade e auditoria (compartilhadas pelos dois hosts)
+  LibraryMcp.Stdio/   host stdio: identidade vem da variável BIBLIOTECA_USUARIO
+  LibraryMcp.Http/    host Streamable HTTP: identidade vem do JWT
+tests/
+  LibraryMcp.Tests/   protocolo, regras, autorização e transporte HTTP
+```
 
----
+## Para levar a produção
 
-MIT License
+- Configure `Jwt:Authority` e `Jwt:Audiencia` do seu provedor (Entra ID, Auth0, Keycloak) e remova a chave simétrica de desenvolvimento.
+- Restrinja `AllowedHosts` aos nomes públicos do serviço. Habilite CORS só se houver cliente de navegador, e com a política mais restrita possível.
+- Troque `EnsureCreated` por migrações do EF Core.
+
+## Histórico
+
+- **2.0.0:** reescrita sobre o SDK oficial (`ModelContextProtocol` 2.4), com transportes stdio e HTTP, ferramentas por intenção, autorização no servidor e testes pelo protocolo. Sai o MediatR, que passou a ter licença comercial.
+- **1.0.0** ([tag](https://github.com/alexandrecampos-dev/dotnet-mcp-library/tree/v1.0.0)): uma API REST com endpoints em formato próprio (`/mcp/tools`, `/mcp/execute`). Não implementava o protocolo MCP.
+
+## Licença
+
+[MIT](LICENSE)

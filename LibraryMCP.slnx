@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/LibraryMCP.API/LibraryMCP.API.csproj" />
-    <Project Path="src/LibraryMCP.Application/LibraryMCP.Application.csproj" />
-    <Project Path="src/LibraryMCP.Domain/LibraryMCP.Domain.csproj" />
-    <Project Path="src/LibraryMCP.Infrastructure/LibraryMCP.Infrastructure.csproj" />
-    <Project Path="src/LibraryMCP.MCP/LibraryMCP.MCP.csproj" />
-  </Folder>
-</Solution>

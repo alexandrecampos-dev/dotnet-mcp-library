@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LibraryMcp.Core/LibraryMcp.Core.csproj" />
+    <Project Path="src/LibraryMcp.Tools/LibraryMcp.Tools.csproj" />
+    <Project Path="src/LibraryMcp.Stdio/LibraryMcp.Stdio.csproj" />
+    <Project Path="src/LibraryMcp.Http/LibraryMcp.Http.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LibraryMcp.Tests/LibraryMcp.Tests.csproj" />
+  </Folder>
+</Solution>
