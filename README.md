@@ -118,7 +118,7 @@ tests/
   LibraryMcp.Tests/   protocolo, regras, autorização e transporte HTTP
 ```
 
-## Para levar a produção
+## Para levar à produção
 
 - Configure `Jwt:Authority` e `Jwt:Audiencia` do seu provedor (Entra ID, Auth0, Keycloak) e remova a chave simétrica de desenvolvimento.
 - Restrinja `AllowedHosts` aos nomes públicos do serviço. Habilite CORS só se houver cliente de navegador, e com a política mais restrita possível.
